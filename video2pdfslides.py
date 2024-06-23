@@ -11,13 +11,13 @@ import argparse
 
 OUTPUT_SLIDES_DIR = f"./output"
 
-FRAME_RATE = 3                   # no.of frames per second that needs to be processed, fewer the count faster the speed
-WARMUP = FRAME_RATE              # initial number of frames to be skipped
-FGBG_HISTORY = FRAME_RATE * 15   # no.of frames in background object
-VAR_THRESHOLD = 16               # Threshold on the squared Mahalanobis distance between the pixel and the model to decide whether a pixel is well described by the background model.
-DETECT_SHADOWS = False            # If true, the algorithm will detect shadows and mark them.
-MIN_PERCENT = 0.1                # min % of diff between foreground and background to detect if motion has stopped
-MAX_PERCENT = 3                  # max % of diff between foreground and background to detect if frame is still in motion
+FRAME_RATE = 30                   # 每秒需要处理的帧数，计数越少速度越快
+WARMUP = FRAME_RATE              # 初始要跳过的帧数
+FGBG_HISTORY = FRAME_RATE * 15   # 背景对象中的帧数
+VAR_THRESHOLD = 16               # 像素与模型之间的马哈拉诺比斯距离平方的阈值，用于确定背景模型是否很好地描述了像素。
+DETECT_SHADOWS = False            # 如果为真，算法将检测阴影并标记它们。
+MIN_PERCENT = 0.1                # 前景和背景之间的差异的最小百分比，以检测运动是否停止
+MAX_PERCENT = 3                  # 前景和背景之间的最大百分比，以检测帧是否仍在移动
 
 
 def get_frames(video_path):
@@ -37,15 +37,15 @@ def get_frames(video_path):
     print("total_frames: ", total_frames)
     print("FRAME_RATE", FRAME_RATE)
 
-    # loop over the frames of the video
+    # 循环播放视频帧
     while True:
-        # grab a frame from the video
+        # 从视频中抓取一帧
 
-        vs.set(cv2.CAP_PROP_POS_MSEC, frame_time * 1000)    # move frame to a timestamp
+        vs.set(cv2.CAP_PROP_POS_MSEC, frame_time * 1000)    # 将帧移动到时间戳
         frame_time += 1/FRAME_RATE
 
         (_, frame) = vs.read()
-        # if the frame is None, then we have reached the end of the video file
+        # 如果帧为 None，那么我们已经到达视频文件的末尾
         if frame is None:
             break
 
@@ -58,10 +58,10 @@ def get_frames(video_path):
 
 def detect_unique_screenshots(video_path, output_folder_screenshot_path):
     ''''''
-    # Initialize fgbg a Background object with Parameters
-    # history = The number of frames history that effects the background subtractor
-    # varThreshold = Threshold on the squared Mahalanobis distance between the pixel and the model to decide whether a pixel is well described by the background model. This parameter does not affect the background update.
-    # detectShadows = If true, the algorithm will detect shadows and mark them. It decreases the speed a bit, so if you do not need this feature, set the parameter to false.
+    # 使用参数初始化fgbg背景对象
+    # 历史=影响背景减法器的历史帧数
+    # var Threshold = 像素与模型之间的马哈拉诺比斯距离平方的阈值，用于确定背景模型是否很好地描述了像素。该参数不影响后台更新。
+    # 检测阴影detect_shadows = 如果为 true，算法将检测阴影并标记它们。它会稍微降低速度，因此如果不需要此功能，请将该参数设置为 false。
 
     fgbg = cv2.createBackgroundSubtractorMOG2(history=FGBG_HISTORY, varThreshold=VAR_THRESHOLD,detectShadows=DETECT_SHADOWS)
 
@@ -73,7 +73,7 @@ def detect_unique_screenshots(video_path, output_folder_screenshot_path):
     screenshoots_count = 0
     for frame_count, frame_time, frame in get_frames(video_path):
         orig = frame.copy() # clone the original frame (so we can save it later), 
-        frame = imutils.resize(frame, width=600) # resize the frame
+        # frame = imutils.resize(frame, width=600) # resize the frame
         mask = fgbg.apply(frame) # apply the background subtractor
 
         # apply a series of erosions and dilations to eliminate noise
@@ -81,8 +81,7 @@ def detect_unique_screenshots(video_path, output_folder_screenshot_path):
 #            mask = cv2.dilate(mask, None, iterations=2)
 
         # if the width and height are empty, grab the spatial dimensions
-        if W is None or H is None:
-            (H, W) = mask.shape[:2]
+        (H, W) = mask.shape[:2]
 
         # compute the percentage of the mask that is "foreground"
         p_diff = (cv2.countNonZero(mask) / float(W * H)) * 100
@@ -91,7 +90,9 @@ def detect_unique_screenshots(video_path, output_folder_screenshot_path):
 
         if p_diff < MIN_PERCENT and not captured and frame_count > WARMUP:
             captured = True
-            filename = f"{screenshoots_count:03}_{round(frame_time/60, 2)}.png"
+            video_name = video_path.rsplit('/', 1)[-1].split('.')[0]
+            time_str = time.strftime('%H_%M_%S', time.gmtime(frame_time))
+            filename = f"{video_name}_{time_str}.png"
 
             path = os.path.join(output_folder_screenshot_path, filename)
             print("saving {}".format(path))
