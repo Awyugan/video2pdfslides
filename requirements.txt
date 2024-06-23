@@ -1,3 +1,6 @@
 imutils==0.5.4
-opencv_python==4.5.2.52
-img2pdf==0.4.1
+opencv-python==4.5.5.64
+numpy==1.21.5
+Pillow==9.0.1
+img2pdf==0.4.4
+argparse==1.4.0
