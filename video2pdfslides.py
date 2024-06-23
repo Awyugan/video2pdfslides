@@ -26,7 +26,7 @@ SAVEPDF = False                   # 设置为True时自动保存PDF，设置为F
 def get_video_size(video_path):
     url = NSURL.fileURLWithPath_(video_path)
     asset = AVAsset.assetWithURL_(url)
-    video_tracks = asset.tracksWithMediaType_('vide')
+    video_tracks = asset.tracksWithMediaType_('video')
 
     if len(video_tracks) == 0:
         print("Error: No video tracks found in the video file.")
@@ -124,7 +124,7 @@ def initialize_output_folder(video_path):
     print('initialized output folder', output_folder_screenshot_path)
     return output_folder_screenshot_path
 
-def convert_screenshots_to_pdf(output_folder_screenshot_path):
+def convert_screenshots_to_pdf(output_folder_screenshot_path, video_path):
     output_pdf_path = f"{OUTPUT_SLIDES_DIR}/{video_path.rsplit('/')[-1].split('.')[0]}" + '.pdf'
     print('converting images to pdf..')
     with open(output_pdf_path, "wb") as f:
@@ -133,7 +133,7 @@ def convert_screenshots_to_pdf(output_folder_screenshot_path):
     print('pdf saved at', output_pdf_path)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("video_path")
+    parser = argparse.ArgumentParser(description="Convert video to PDF slides")
     parser.add_argument("video_path", help="path of video to be converted to pdf slides", type=str)
     parser.add_argument("--savepdf", help="Set to True to save PDF, False to skip saving PDF", type=bool, default=True)
     args = parser.parse_args()
@@ -145,6 +145,6 @@ if __name__ == "__main__":
     detect_unique_screenshots(video_path, output_folder_screenshot_path)
 
     if SAVEPDF:
-        convert_screenshots_to_pdf(output_folder_screenshot_path)
+        convert_screenshots_to_pdf(output_folder_screenshot_path, video_path)
     else:
         print("PDF saving skipped as per configuration.")
