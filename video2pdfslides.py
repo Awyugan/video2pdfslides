@@ -9,6 +9,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from Foundation import NSURL
 from AVFoundation import AVAsset
+from tqdm import tqdm
 
 ############# Define constants
 
@@ -124,27 +125,36 @@ def initialize_output_folder(video_path):
     print('initialized output folder', output_folder_screenshot_path)
     return output_folder_screenshot_path
 
-def convert_screenshots_to_pdf(output_folder_screenshot_path, video_path):
-    output_pdf_path = f"{OUTPUT_SLIDES_DIR}/{video_path.rsplit('/')[-1].split('.')[0]}" + '.pdf'
+def convert_screenshots_to_pdf(output_folder_screenshot_path):
+    output_pdf_path = f"{OUTPUT_SLIDES_DIR}/{output_folder_screenshot_path.rsplit('/')[-1]}" + '.pdf'
     print('converting images to pdf..')
     with open(output_pdf_path, "wb") as f:
         f.write(img2pdf.convert(sorted(glob.glob(f"{output_folder_screenshot_path}/*.png"))))
     print('Pdf Created!')
     print('pdf saved at', output_pdf_path)
 
+def process_video(video_path):
+    print('Processing video:', video_path)
+    output_folder_screenshot_path = initialize_output_folder(video_path)
+    detect_unique_screenshots(video_path, output_folder_screenshot_path)
+
+    if SAVEPDF:
+        convert_screenshots_to_pdf(output_folder_screenshot_path)
+    else:
+        print("PDF saving skipped as per configuration.")
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Convert video to PDF slides")
-    parser.add_argument("video_path", help="path of video to be converted to pdf slides", type=str)
+    parser = argparse.ArgumentParser("video_path")
+    parser.add_argument("video_path", help="path of video or folder containing videos to be converted to pdf slides", type=str)
     parser.add_argument("--savepdf", help="Set to True to save PDF, False to skip saving PDF", type=bool, default=True)
     args = parser.parse_args()
     video_path = args.video_path
     SAVEPDF = args.savepdf
 
-    print('video_path', video_path)
-    output_folder_screenshot_path = initialize_output_folder(video_path)
-    detect_unique_screenshots(video_path, output_folder_screenshot_path)
-
-    if SAVEPDF:
-        convert_screenshots_to_pdf(output_folder_screenshot_path, video_path)
+    if os.path.isdir(video_path):
+        video_files = [os.path.join(video_path, f) for f in os.listdir(video_path) if f.endswith(('.mp4', '.avi', '.mkv'))]
     else:
-        print("PDF saving skipped as per configuration.")
+        video_files = [video_path]
+
+    for video_file in tqdm(video_files, desc="Processing videos"):
+        process_video(video_file)
