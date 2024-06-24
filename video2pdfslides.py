@@ -25,19 +25,28 @@ MAX_PERCENT = 3                  # 前景和背景之间的最大百分比，以
 SAVEPDF = False                   # 设置为True时自动保存PDF，设置为False时不保存PDF
 
 def get_video_size(video_path):
-    url = NSURL.fileURLWithPath_(video_path)
-    asset = AVAsset.assetWithURL_(url)
-    video_tracks = asset.tracksWithMediaType_('video')
+    try:
+        url = NSURL.fileURLWithPath_(video_path)
+        asset = AVAsset.assetWithURL_(url)
+        video_tracks = asset.tracksWithMediaType_('video')
 
-    if len(video_tracks) == 0:
-        print("Error: No video tracks found in the video file.")
-        return None, None
+        if len(video_tracks) == 0:
+            raise Exception("Error: No video tracks found in the video file.")
 
-    video_track = video_tracks[0]
-    natural_size = video_track.naturalSize()
-    width = natural_size.width
-    height = natural_size.height
-    return width, height
+        video_track = video_tracks[0]
+        natural_size = video_track.naturalSize()
+        width = natural_size.width
+        height = natural_size.height
+        return width, height
+    except Exception as e:
+        print(f"AVFoundation error: {e}, falling back to OpenCV.")
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise Exception(f'unable to open file {video_path}')
+        width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        cap.release()
+        return int(width), int(height)
 
 def get_frames(video_path):
     '''A function to return the frames from a video located at video_path
@@ -50,7 +59,7 @@ def get_frames(video_path):
 
     total_frames = vs.get(cv2.CAP_PROP_FRAME_COUNT)
     frame_time = 0
-    frame_count = 0
+    frame_count = 1  # 将初始帧计数器从1开始
 
     # 获取视频的原始尺寸
     width, height = get_video_size(video_path)
@@ -66,11 +75,12 @@ def get_frames(video_path):
         if frame is None:
             break
 
-        frame_count += 1
         # 确保帧的尺寸与视频的原始尺寸一致
         if frame.shape[1] != width or frame.shape[0] != height:
             frame = cv2.resize(frame, (int(width), int(height)))
         yield frame_count, frame_time, frame
+
+        frame_count += 1  # 在循环的末尾增加帧计数器
 
     vs.release()
 
@@ -99,7 +109,7 @@ def detect_unique_screenshots(video_path, output_folder_screenshot_path):
             captured = True
             video_name = video_path.rsplit('/', 1)[-1].split('.')[0]
             time_str = time.strftime('%H_%M_%S', time.gmtime(frame_time))
-            filename = f"{video_name}_{time_str}.png"
+            filename = f"{video_name}_{screenshoots_count:03d}_{time_str}.png"
 
             path = os.path.join(output_folder_screenshot_path, filename)
             cv2.imwrite(path, orig)
@@ -129,7 +139,7 @@ def convert_screenshots_to_pdf(output_folder_screenshot_path):
     output_pdf_path = f"{OUTPUT_SLIDES_DIR}/{output_folder_screenshot_path.rsplit('/')[-1]}" + '.pdf'
     print('converting images to pdf..')
     with open(output_pdf_path, "wb") as f:
-        f.write(img2pdf.convert(sorted(glob.glob(f"{output_folder_screenshot_path}/*.png"))))
+        f.write(img2pdf.convert(sorted(glob.glob(f"{output_folder_screenshot_path}/*.png")))))
     print('Pdf Created!')
     print('pdf saved at', output_pdf_path)
 
@@ -146,7 +156,7 @@ def process_video(video_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("video_path")
     parser.add_argument("video_path", help="path of video or folder containing videos to be converted to pdf slides", type=str)
-    parser.add_argument("--savepdf", help="Set to True to save PDF, False to skip saving PDF", type=bool, default=True)
+    parser.add_argument("--savepdf", help="Set to True to save PDF, False to skip saving PDF", type=bool, default=False)
     args = parser.parse_args()
     video_path = args.video_path
     SAVEPDF = args.savepdf
