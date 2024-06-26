@@ -139,7 +139,7 @@ def convert_screenshots_to_pdf(output_folder_screenshot_path):
     output_pdf_path = f"{OUTPUT_SLIDES_DIR}/{output_folder_screenshot_path.rsplit('/')[-1]}" + '.pdf'
     print('converting images to pdf..')
     with open(output_pdf_path, "wb") as f:
-        f.write(img2pdf.convert(sorted(glob.glob(f"{output_folder_screenshot_path}/*.png")))))
+        f.write(img2pdf.convert(sorted(glob.glob(f"{output_folder_screenshot_path}/*.png"))))
     print('Pdf Created!')
     print('pdf saved at', output_pdf_path)
 
